@@ -62,6 +62,7 @@
 #include "event_type.h"
 #include "utils_timestamp.h"
 #include "utils_verify.h"
+#include "mailbox.h"
 #ifdef ENABLE_NATIVE_NETWORK
 #include "service_network_api.h"
 
@@ -413,6 +414,13 @@ static int cpurt_controller_init(const char *id, const host_config *host_spec)
     char *dirpath = NULL;
     int64_t cpu_rt_period = 0;
     int64_t cpu_rt_runtime = 0;
+    int cgroup_version = 0;
+
+    // cgroup v2 is not support cpurt
+    cgroup_version = common_get_cgroup_version();
+    if (cgroup_version == CGROUP_VERSION_2) {
+        return 0;
+    }
 
     cgroups_path = merge_container_cgroups_path(id, host_spec);
     if (cgroups_path == NULL || strcmp(cgroups_path, "/") == 0 || strcmp(cgroups_path, ".") == 0) {
@@ -428,23 +436,24 @@ static int cpurt_controller_init(const char *id, const host_config *host_spec)
     }
 
     if (conf_get_systemd_cgroup()) {
-        // currently it is the same as docker, yet it is unclear that
-        // if systemd cgroup is used and cgroup parent is set to a slice rather than system.slice
-        // should iSulad set cpu.rt_runtime_us and cpu.rt_period_us for the parent path?
-        // in fact, even if system.slice is used,
-        // cpu.rt_runtime_us and cpu.rt_period_us might still needed to be set manually
-        __isula_auto_free char *init_cgroup = common_get_init_cgroup("cpu");
+        __isula_auto_free char *converted_cgroup = common_convert_cgroup_path(cgroups_path);
+        if (converted_cgroup == NULL) {
+            ERROR("Failed to convert cgroup path");
+            return -1;
+        }
+
+        __isula_auto_free char *init_cgroup = common_get_init_cgroup_path("cpu");
         if (init_cgroup == NULL) {
             ERROR("Failed to get init cgroup");
             return -1;
         }
         // make sure that the own cgroup path for cpu existed
-        __isula_auto_free char *own_cgroup = common_get_own_cgroup("cpu");
+        __isula_auto_free char *own_cgroup = common_get_own_cgroup_path("cpu");
         if (own_cgroup == NULL) {
             ERROR("Failed to get own cgroup");
             return -1;
         }
-        char *new_cgroups_path = util_path_join(init_cgroup, cgroups_path);
+        char *new_cgroups_path = util_path_join(init_cgroup, converted_cgroup);
         if (new_cgroups_path == NULL) {
             ERROR("Failed to join path");
             return -1;
@@ -453,7 +462,7 @@ static int cpurt_controller_init(const char *id, const host_config *host_spec)
         cgroups_path = new_cgroups_path;
     }
 
-    mnt_root = sysinfo_cgroup_controller_cpurt_mnt_path();
+    mnt_root = sysinfo_get_cpurt_mnt_path();
     if (mnt_root == NULL) {
         ERROR("Failed to get cpu rt controller mnt root path");
         return -1;
@@ -535,6 +544,9 @@ static int container_start_cb(const container_start_request *request, container_
     container_t *cont = NULL;
     int sync_fd = -1;
     pthread_t thread_id = 0;
+#ifdef ENABLE_CRI_API_V1
+    cri_container_message_t message;
+#endif
 
     DAEMON_CLEAR_ERRMSG();
 
@@ -588,6 +600,15 @@ static int container_start_cb(const container_start_request *request, container_
 
     EVENT("Event: {Object: %s, Type: Running}", id);
     (void)isulad_monitor_send_container_event(id, START, -1, 0, NULL, NULL);
+
+#ifdef ENABLE_CRI_API_V1
+    if (is_container_in_sandbox(cont->common_config->sandbox_info)) {
+        message.container_id = id;
+        message.sandbox_id = cont->common_config->sandbox_info->id;
+        message.type = CRI_CONTAINER_MESSAGE_TYPE_STARTED;
+        mailbox_publish(MAILBOX_TOPIC_CRI_CONTAINER, &message);
+    }
+#endif
 
 pack_response:
     handle_start_io_thread_by_cc(cc, sync_fd, thread_id);
@@ -1002,6 +1023,9 @@ static int container_delete_cb(const container_delete_request *request, containe
     char *name = NULL;
     char *id = NULL;
     container_t *cont = NULL;
+#ifdef ENABLE_CRI_API_V1
+    cri_container_message_t message;
+#endif
 
     DAEMON_CLEAR_ERRMSG();
     if (request == NULL || response == NULL) {
@@ -1055,6 +1079,15 @@ static int container_delete_cb(const container_delete_request *request, containe
     }
 
     EVENT("Event: {Object: %s, Type: Deleted}", id);
+
+#ifdef ENABLE_CRI_API_V1
+    if (is_container_in_sandbox(cont->common_config->sandbox_info)) {
+        message.container_id = cont->common_config->id;
+        message.sandbox_id = cont->common_config->sandbox_info->id;
+        message.type = CRI_CONTAINER_MESSAGE_TYPE_DELETED;
+        mailbox_publish(MAILBOX_TOPIC_CRI_CONTAINER, &message);
+    }
+#endif
 
 pack_response:
     pack_delete_response(*response, cc, id);

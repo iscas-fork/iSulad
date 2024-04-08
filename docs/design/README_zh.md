@@ -18,6 +18,8 @@
 
 - 查看 restart 模块的设计文档： [restart_manager_design](./detailed/Container/restart_manager_design.md)。
 
+- 查看 cgroup v2 的设计文档： [cgroup_v2_design](./detailed/Container/cgroup_v2_design_zh.md)。
+
 ## CRI
 
 - 查看 CRI的启动程序的重构文档： [cri_cni_refactor](./detailed/CRI/cri_cni_refactor_zh.md) 。
@@ -68,3 +70,4 @@
 - 查看 Sandbox 模块的设计文档： [sandbox_design_zh](./detailed/Sandbox/sandbox_design_zh.md) 。
 - 查看 Controller 模块的设计文档： [controller_design_zh](./detailed/Sandbox/controller_design_zh.md) 。
 - 查看 CRI V1 模块的设计文档： [podsandbox_cri_interface_design](./detailed/Sandbox/podsandbox_cri_interface_design.md) 。
+- 查看 CRI 1.29 更新模块的设计文档： [cri_1.29_update_design](./detailed/CRI/CRI_1.29_update_design.md) 。

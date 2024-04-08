@@ -28,8 +28,10 @@ add_executable(${EXE}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/modules/spec/specs_security.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/err_msg.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/sysinfo.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup_v1.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup/cgroup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup/cgroup_v1.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup/cgroup_v2.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup/cgroup_common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/cmd/command_parser.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/config/daemon_arguments.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../test/image/oci/oci_ut_common.cc
@@ -41,6 +43,7 @@ add_executable(${EXE}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../test/mocks/isulad_config_mock.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../test/mocks/storage_mock.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../test/mocks/image_mock.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../test/mocks/sender_mock.cc
     specs_ut.cc)
 
 target_include_directories(${EXE} PUBLIC
@@ -54,6 +57,7 @@ target_include_directories(${EXE} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/cmd/isulad
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/config
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/common/cgroup
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/modules/api
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/modules/volume
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/daemon/modules/runtime

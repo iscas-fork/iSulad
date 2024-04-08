@@ -275,13 +275,13 @@ static void clean_resources_on_failure(const container_t *cont, const char *engi
     return;
 }
 
-static int do_post_start_on_success(const char *id, const char *runtime, const char *pidfile, int exit_fifo_fd,
-                                    const pid_ppid_info_t *pid_info)
+static int do_post_start_on_success(container_t *cont, int exit_fifo_fd,
+                                    const char *exit_fifo, const pid_ppid_info_t *pid_info)
 {
     int ret = 0;
 
     // exit_fifo_fd was closed in container_supervisor_add_exit_monitor
-    if (container_supervisor_add_exit_monitor(exit_fifo_fd, pid_info, id, runtime)) {
+    if (container_supervisor_add_exit_monitor(exit_fifo_fd, exit_fifo, pid_info, cont)) {
         ERROR("Failed to add exit monitor to supervisor");
         ret = -1;
     }
@@ -921,7 +921,7 @@ static int do_start_container(container_t *cont, const char *console_fifos[], bo
 
     ret = runtime_start(id, runtime, &start_params, pid_info);
     if (ret == 0) {
-        if (do_post_start_on_success(id, runtime, pidfile, exit_fifo_fd, pid_info) != 0) {
+        if (do_post_start_on_success(cont, exit_fifo_fd, exit_fifo, pid_info) != 0) {
             ERROR("Failed to do post start on runtime start success");
             ret = -1;
             goto clean_resources;

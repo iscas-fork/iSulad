@@ -24,6 +24,7 @@
 #include <isula_libutils/container_config_v2.h>
 #include <isula_libutils/host_config.h>
 #include <isula_libutils/log.h>
+#include <isula_libutils/auto_cleanup.h>
 
 #include "isulad_config.h"
 
@@ -44,6 +45,8 @@
 #include "utils_file.h"
 #include "utils_timestamp.h"
 #include "id_name_manager.h"
+#include "cgroup.h"
+#include "specs_api.h"
 
 /* restore supervisor */
 static int restore_supervisor(const container_t *cont)
@@ -55,7 +58,6 @@ static int restore_supervisor(const container_t *cont)
     char *exit_fifo = NULL;
     char *id = cont->common_config->id;
     char *statepath = cont->state_path;
-    char *runtime = cont->runtime;
     pid_ppid_info_t pid_info = { 0 };
 
     nret = snprintf(container_state, sizeof(container_state), "%s/%s", statepath, id);
@@ -91,7 +93,7 @@ static int restore_supervisor(const container_t *cont)
     pid_info.start_time = cont->state->state->start_time;
     pid_info.pstart_time = cont->state->state->p_start_time;
 
-    if (container_supervisor_add_exit_monitor(exit_fifo_fd, &pid_info, id, runtime)) {
+    if (container_supervisor_add_exit_monitor(exit_fifo_fd, exit_fifo, &pid_info, cont)) {
         ERROR("Failed to add exit monitor to supervisor");
         ret = -1;
         goto out;
