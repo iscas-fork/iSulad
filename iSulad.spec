@@ -1,5 +1,5 @@
 %global _version 2.1.5
-%global _release 1
+%global _release d761b96.oe.2309
 %global is_systemd 1
 %global enable_criv1 1
 %global enable_shimv2 1
@@ -41,13 +41,16 @@ Requires: sqlite
 BuildRequires: gtest-devel gmock-devel
 %endif
 
-%define lcrver_lower 2.1.4-0
-%define lcrver_upper 2.1.5-0
+#%define lcrver_lower 2.1.4-0
+#%define lcrver_upper 2.1.5-0
+%define lcrver_upper 2.1.5
 
-BuildRequires: libisula-devel > %{lcrver_lower} libisula-devel < %{lcrver_upper}
+#BuildRequires: libisula-devel > %{lcrver_lower} libisula-devel <= %{lcrver_upper}
+BuildRequires: lcr-devel = %{lcrver_upper}
 BuildRequires: cmake gcc-c++ yajl-devel
 BuildRequires: grpc grpc-plugins grpc-devel protobuf-devel
 BuildRequires: libcurl libcurl-devel libarchive-devel device-mapper-devel
+BuildRequires: http-parser-devel
 BuildRequires: libseccomp-devel libcap-devel libselinux-devel libwebsockets libwebsockets-devel
 BuildRequires: systemd-devel git
 BuildRequires: libevhtp-devel libevent-devel
@@ -56,13 +59,14 @@ BuildRequires: lib-shim-v2 lib-shim-v2-devel
 %endif
 
 
-Requires:      libisula > %{lcrver_lower} libisula < %{lcrver_upper}
+#Requires:      libisula > %{lcrver_lower} libisula < %{lcrver_upper}
+Requires:      lcr = %{lcrver_upper}
 Requires:      grpc protobuf
 Requires:      libcurl
-Requires:      libseccomp
+Requires:      http-parser libseccomp
 Requires:      libcap libselinux libwebsockets libarchive device-mapper
 Requires:      systemd
-Requires:      (docker-runc or runc)
+Requires:      crun
 BuildRequires: libevhtp libevent
 %if 0%{?enable_shimv2}
 Requires:      lib-shim-v2
