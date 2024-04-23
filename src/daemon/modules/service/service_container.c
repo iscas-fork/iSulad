@@ -1718,6 +1718,12 @@ void umount_share_shm(container_t *cont)
         return;
     }
     if (cont->hostconfig->ipc_mode == NULL || namespace_is_shareable(cont->hostconfig->ipc_mode)) {
+#ifdef ENABLE_CRI_API_V1
+        // For sandbox in cri v1, the shm path is created and umounted in CRI
+        if (is_sandbox_container(cont->common_config->sandbox_info)) {
+            return;
+        }
+#endif
         if (cont->common_config == NULL || cont->common_config->shm_path == NULL) {
             return;
         }
@@ -2003,6 +2009,16 @@ static defs_process *make_exec_process_spec(const container_config *container_sp
         }
 
         spec->no_new_privileges = oci_spec->process->no_new_privileges;
+
+#ifdef ENABLE_CDI
+        // extend step: merge env from oci_spec which comes from injected devices
+        ret = defs_process_add_multiple_env(spec, (const char **)oci_spec->process->env,
+            oci_spec->process->env_len);
+        if (ret != 0) {
+            ERROR("Failed to dup oci env for exec process spec");
+            goto err_out;
+        }
+#endif /* ENABLE_CDI */
     }
 
     // for oci runtime:

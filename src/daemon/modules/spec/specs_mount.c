@@ -28,6 +28,7 @@
 #include <isula_libutils/container_config_v2.h>
 #include <isula_libutils/json_common.h>
 #include <isula_libutils/oci_runtime_config_linux.h>
+#include <isula_libutils/auto_cleanup.h>
 #include <limits.h>
 #include <stdint.h>
 
@@ -54,6 +55,9 @@
 #include "volume_api.h"
 #include "parse_volume.h"
 #include "specs_api.h"
+#ifdef ENABLE_CDI
+#include "cdi_operate_api.h"
+#endif /* ENABLE_CDI */
 
 enum update_rw {
     update_rw_untouch,
@@ -2799,33 +2803,31 @@ out_free:
     return ret;
 }
 
-#define SHM_MOUNT_POINT "/dev/shm"
-static int set_shm_path(host_config *host_spec, container_config_v2_common_config *v2_spec)
+static inline int set_sharable_ipc_mode(host_config *host_spec, container_config_v2_common_config *v2_spec)
 {
-    int ret = 0;
+    free(v2_spec->shm_path);
+#ifdef ENABLE_CRI_API_V1
+    // In the case of sandbox API is used, the shm path has already been created in CRI,
+    // so we need to use the sandbox's shm path
+    if (is_sandbox_container(v2_spec->sandbox_info)) {
+        v2_spec->shm_path = util_strdup_s(v2_spec->sandbox_info->shm_path);
+        return 0;
+    }
+#endif
+    v2_spec->shm_path = get_prepare_share_shm_path(host_spec->runtime, v2_spec->id);
+    if (v2_spec->shm_path == NULL) {
+        ERROR("Failed to get prepare share shm path");
+        return -1;
+    }
+
+    return 0;
+}
+
+static inline int set_connected_container_shm_path(host_config *host_spec, container_config_v2_common_config *v2_spec)
+{
     container_t *cont = NULL;
-    char *tmp_cid = NULL;
+    __isula_auto_free char *tmp_cid = NULL;
     char *right_path = NULL;
-
-    // ignore shm of system container
-    if (host_spec->system_container) {
-        return 0;
-    }
-    // setup shareable dirs
-    if (is_shareable_ipc(host_spec->ipc_mode)) {
-        // has mount for /dev/shm
-        if (has_mount_shm(host_spec, v2_spec)) {
-            return 0;
-        }
-
-        v2_spec->shm_path = get_prepare_share_shm_path(host_spec->runtime, v2_spec->id);
-        if (v2_spec->shm_path == NULL) {
-            ERROR("Failed to get prepare share shm path");
-            return -1;
-        }
-
-        return 0;
-    }
 
 #ifdef ENABLE_CRI_API_V1
     // Sandbox API is used and the connected container is actually a sandbox
@@ -2833,34 +2835,78 @@ static int set_shm_path(host_config *host_spec, container_config_v2_common_confi
     if (namespace_is_sandbox(host_spec->ipc_mode, v2_spec->sandbox_info)) {
         free(v2_spec->shm_path);
         v2_spec->shm_path = util_strdup_s(v2_spec->sandbox_info->shm_path);
-        goto out;
+        return 0;
     }
 #endif
 
-    if (namespace_is_container(host_spec->ipc_mode)) {
-        tmp_cid = namespace_get_connected_container(host_spec->ipc_mode);
-        cont = containers_store_get(tmp_cid);
-        if (cont == NULL) {
-            ERROR("Invalid share path: %s", host_spec->ipc_mode);
-            ret = -1;
-            goto out;
-        }
-        right_path = util_strdup_s(cont->common_config->shm_path);
-        container_unref(cont);
-    } else if (namespace_is_host(host_spec->ipc_mode)) {
-        if (!util_file_exists(SHM_MOUNT_POINT)) {
-            ERROR("/dev/shm is not mounted, but must be for --ipc=host");
-            ret = -1;
-            goto out;
-        }
-        right_path = util_strdup_s(SHM_MOUNT_POINT);
+    tmp_cid = namespace_get_connected_container(host_spec->ipc_mode);
+    cont = containers_store_get(tmp_cid);
+    if (cont == NULL) {
+        ERROR("Invalid share path: %s", host_spec->ipc_mode);
+        return -1;
     }
+    right_path = util_strdup_s(cont->common_config->shm_path);
+    container_unref(cont);
 
     free(v2_spec->shm_path);
     v2_spec->shm_path = right_path;
-out:
-    free(tmp_cid);
-    return ret;
+
+    return 0;
+}
+
+#define SHM_MOUNT_POINT "/dev/shm"
+static inline int set_host_ipc_shm_path(container_config_v2_common_config *v2_spec)
+{
+    if (!util_file_exists(SHM_MOUNT_POINT)) {
+        ERROR("/dev/shm is not mounted, but must be for --ipc=host");
+        return -1;
+    }
+    free(v2_spec->shm_path);
+    v2_spec->shm_path = util_strdup_s(SHM_MOUNT_POINT);
+    return 0;
+}
+
+/**
+ * There are 4 cases for setting shm path:
+ * 1. The user defined /dev/shm in mounts, which takes the first priority
+ * 2. If sharable is set in ipc mode (or by default ipc_mode is null), the container provides shm path,
+ *    in the case of sandbox API is used, the sandbox module has already provided shm path
+ * 3. Use the connected container's shm path if ipc_mode is set to container:<cid>, 
+ *    if connected containerd is a sandbox, use the sandbox's shm path
+ * 4. Use /dev/shm if ipc_mode is set to host
+ */
+static int set_shm_path(host_config *host_spec, container_config_v2_common_config *v2_spec)
+{
+    // ignore shm of system container
+    if (host_spec->system_container) {
+        return 0;
+    }
+
+    // case 1: Defined in mounts already
+    if (has_mount_shm(host_spec, v2_spec)) {
+        return 0;
+    }
+
+    // case 2: Container has its own IPC namespace
+    if (is_shareable_ipc(host_spec->ipc_mode)) {
+        return set_sharable_ipc_mode(host_spec, v2_spec);
+    }
+
+    // case 3: Connected container
+    if (namespace_is_container(host_spec->ipc_mode)) {
+        return set_connected_container_shm_path(host_spec, v2_spec);
+    }
+
+    // case 4: Host IPC namespace
+    if (namespace_is_host(host_spec->ipc_mode)) {
+        return set_host_ipc_shm_path(v2_spec);
+    }
+
+    // Otherwise, the case is unknown, nothing is set
+    free(v2_spec->shm_path);
+    v2_spec->shm_path = NULL;
+
+    return 0;
 }
 
 int destination_compare(const void *p1, const void *p2)
@@ -3540,6 +3586,15 @@ int update_devcies_for_oci_spec(oci_runtime_spec *oci_spec, host_config *hostcon
         oci_spec->linux->resources->devices_len += 1;
     }
 
+    // extend step: inject CDI devcies
+#ifdef ENABLE_CDI
+    ret = inject_CDI_devcies_for_oci_spec(oci_spec, hostconfig);
+    if (ret != 0) {
+        ERROR("Failed to inject CDI devices");
+        return -1;
+    }
+#endif /* ENABLE_CDI */
+
     // Step8: do update devices and cgroup device rules at here
     if (hostconfig->privileged) {
         // Step8.1: for priviledged container, we should merge all devices under /dev
@@ -3551,3 +3606,31 @@ int update_devcies_for_oci_spec(oci_runtime_spec *oci_spec, host_config *hostcon
 
     return ret;
 }
+
+#ifdef ENABLE_CDI
+int inject_CDI_devcies_for_oci_spec(oci_runtime_spec *oci_spec, host_config *hostconfig)
+{
+    int ret = 0;
+    string_array devices_array = { 0 };
+    __isula_auto_free char *error = NULL;
+    
+    if (oci_spec == NULL || hostconfig == NULL) {
+        ERROR("Invalid params");
+        return -1;
+    }
+    if (hostconfig->cdi_requested_devices == NULL) {
+        return 0;
+    }
+    devices_array.items = hostconfig->cdi_requested_devices;
+    devices_array.len = hostconfig->cdi_requested_devices_len;
+    devices_array.cap = hostconfig->cdi_requested_devices_len;
+    if (cdi_operate_refresh() != 0) {
+        WARN("CDI registry has errors, please check past logs");
+    }
+    if (cdi_operate_inject_devices(oci_spec, &devices_array) != 0) {
+        ERROR("Failed to inject CDI devices");
+        ret = -1;
+    }
+    return ret;
+}
+#endif /* ENABLE_CDI */

@@ -110,6 +110,8 @@ public:
 
 
 private:
+    grpc::Status ToGRPCStatus(Errors &err);
+
     std::unique_ptr<CRI::CRIRuntimeService> m_rService;
 };
 
