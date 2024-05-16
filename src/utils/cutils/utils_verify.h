@@ -32,7 +32,8 @@ extern "C" {
 #define __NamePattern                                                                 \
     "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])"                             \
     "((\\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))+)?(:[0-9]+)?/)?[a-z0-9]" \
-    "+((([._]|__|[-]*)[a-z0-9]+)+)?((/[a-z0-9]+((([._]|__|[-]*)[a-z0-9]+)+)?)+)?$"
+    "+((([._]|__|[-]*)[a-z0-9]+)+)?((/[a-z0-9]+((([._]|__|[-]*)[a-z0-9]+)+)?)+)?"     \
+    "(:([A-Za-z_0-9][A-Za-z_0-9.-]{0,127}))?$"
 
 #define __DIGESTPattern "@[a-z0-9]+:[a-z0-9]{32,}"
 
@@ -117,6 +118,8 @@ bool util_valid_exec_suffix(const char *suffix);
 bool util_valid_positive_interger(const char *value);
 
 bool util_valid_device_cgroup_rule(const char *value);
+
+int util_valid_split_env(const char *env, char **key, char **value);
 
 int util_valid_env(const char *env, char **dst);
 
