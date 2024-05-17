@@ -22,8 +22,12 @@
         "overlay2.override_kernel_check=true"
     ],
     "registry-mirrors": [
+        "docker.io"
     ],
     "insecure-registries": [
+        "k8s.gcr.io",
+        "quay.io",
+        "docker.io"
     ],
     "pod-sandbox-image": "",
     "native.umask": "normal",
@@ -34,6 +38,7 @@
     "use-decrypted-key": true,
     "insecure-skip-verify-enforce": false,
     "cri-runtimes": {
-        "kata": "io.containerd.kata.v2"
-    }
+       "runc": "/usr/bin/share"
+    },
+    "enable-cri-v1": true
 }
