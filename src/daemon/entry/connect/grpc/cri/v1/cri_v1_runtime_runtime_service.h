@@ -112,13 +112,13 @@ public:
     grpc::Status RuntimeConfig(grpc::ServerContext* context, const runtime::v1::RuntimeConfigRequest* request, runtime::v1::RuntimeConfigResponse* response) override {return grpc::Status::OK;}
 
 
-    grpc::Status RuntimeConfig(grpc::ServerContext *context,
-                               const runtime::v1::RuntimeConfigRequest *request,
-                               runtime::v1::RuntimeConfigResponse *reply) override;
-
-    grpc::Status GetContainerEvents(grpc::ServerContext *context,
-                                    const runtime::v1::GetEventsRequest *request,
-                                    grpc::ServerWriter<runtime::v1::ContainerEventResponse> *writer) override;
+//    grpc::Status RuntimeConfig(grpc::ServerContext *context,
+//                               const runtime::v1::RuntimeConfigRequest *request,
+//                               runtime::v1::RuntimeConfigResponse *reply) override;
+//
+//    grpc::Status GetContainerEvents(grpc::ServerContext *context,
+//                                    const runtime::v1::GetEventsRequest *request,
+//                                    grpc::ServerWriter<runtime::v1::ContainerEventResponse> *writer) override;
 
 private:
 
