@@ -106,19 +106,19 @@ public:
                         runtime::v1::StatusResponse *reply) override;
     
     grpc::Status CheckpointContainer(grpc::ServerContext* context, const runtime::v1::CheckpointContainerRequest* request, runtime::v1::CheckpointContainerResponse* response) override{return grpc::Status::OK;}
-    grpc::Status GetContainerEvents(grpc::ServerContext* context, const runtime::v1::GetEventsRequest* request, grpc::ServerWriter< runtime::v1::ContainerEventResponse>* writer) override {return grpc::Status::OK;}
+//    grpc::Status GetContainerEvents(grpc::ServerContext* context, const runtime::v1::GetEventsRequest* request, grpc::ServerWriter< runtime::v1::ContainerEventResponse>* writer) override {return grpc::Status::OK;}
     grpc::Status ListMetricDescriptors(grpc::ServerContext* context, const runtime::v1::ListMetricDescriptorsRequest* request, runtime::v1::ListMetricDescriptorsResponse* response)override{return grpc::Status::OK;}
     grpc::Status ListPodSandboxMetrics(grpc::ServerContext* context, const runtime::v1::ListPodSandboxMetricsRequest* request, runtime::v1::ListPodSandboxMetricsResponse* response)override{return grpc::Status::OK;}
-    grpc::Status RuntimeConfig(grpc::ServerContext* context, const runtime::v1::RuntimeConfigRequest* request, runtime::v1::RuntimeConfigResponse* response) override {return grpc::Status::OK;}
+//    grpc::Status RuntimeConfig(grpc::ServerContext* context, const runtime::v1::RuntimeConfigRequest* request, runtime::v1::RuntimeConfigResponse* response) override {return grpc::Status::OK;}
 
 
-//    grpc::Status RuntimeConfig(grpc::ServerContext *context,
-//                               const runtime::v1::RuntimeConfigRequest *request,
-//                               runtime::v1::RuntimeConfigResponse *reply) override;
-//
-//    grpc::Status GetContainerEvents(grpc::ServerContext *context,
-//                                    const runtime::v1::GetEventsRequest *request,
-//                                    grpc::ServerWriter<runtime::v1::ContainerEventResponse> *writer) override;
+    grpc::Status RuntimeConfig(grpc::ServerContext *context,
+                               const runtime::v1::RuntimeConfigRequest *request,
+                               runtime::v1::RuntimeConfigResponse *reply) override;
+
+    grpc::Status GetContainerEvents(grpc::ServerContext *context,
+                                    const runtime::v1::GetEventsRequest *request,
+                                    grpc::ServerWriter<runtime::v1::ContainerEventResponse> *writer) override;
 
 private:
 
