@@ -29,7 +29,7 @@
         "quay.io",
         "docker.io"
     ],
-    "pod-sandbox-image": "",
+    "pod-sandbox-image": "registry.cn-hangzhou.aliyuncs.com/google_containers/pause:3.9",
     "native.umask": "normal",
     "network-plugin": "cni",
     "cni-bin-dir": "/opt/cni/bin",
